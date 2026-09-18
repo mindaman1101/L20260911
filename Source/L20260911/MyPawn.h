@@ -15,7 +15,11 @@ class UArrowComponent;
 class UCameraComponent;
 class USpringArmComponent;
 class UFloatingPawnMovement;
+class AMyRocket;
 
+class UInputAction;
+
+struct FInputActionValue;
 
 UCLASS()
 class L20260911_API AMyPawn : public APawn
@@ -36,6 +40,10 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	void Pitch(float Value);
+
+	void Roll(float Value);
 
 
 	//UBoxComponent* Box;
@@ -62,4 +70,25 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components")
 	TObjectPtr<UFloatingPawnMovement> Movement;
+
+
+
+	//C++
+	UFUNCTION(BlueprintCallable)
+	void Fire();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	TSubclassOf<AMyRocket> RocketTemplate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	TSoftClassPtr<UInputAction> IA_Fire;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	TSoftClassPtr<UInputAction> IA_PitchRoll;
+
+	UFUNCTION()
+	void Press_IA_Fire(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void Press_IA_PitchRoll(const FInputActionValue& Value);
 };

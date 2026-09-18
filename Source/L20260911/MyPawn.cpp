@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "MyPawn.h"
@@ -10,6 +10,10 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "MyStaticMeshComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "MyRocket.h"
+#include "EnhancedInputComponent.h"
+#include "InputactionValue.h"
 
 
 // Sets default values
@@ -24,13 +28,13 @@ AMyPawn::AMyPawn()
 	Body = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Body"));
 	Body->SetupAttachment(Box);
 
-	//Ư���� ��� �ƴϸ� ���� �����.
+	//특별한 경우 아니면 안함 절대로.
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SM_Body(TEXT("/Script/Engine.StaticMesh'/Game/Assets/P38/Meshs/SM_P38_Body.SM_P38_Body'"));
 	if (SM_Body.Succeeded())
 	{
 		Body->SetStaticMesh(SM_Body.Object);
 	}
-	
+
 	Left = CreateDefaultSubobject<UMyStaticMeshComponent>(TEXT("Left"));
 	Left->SetupAttachment(Body);
 
@@ -57,13 +61,27 @@ AMyPawn::AMyPawn()
 	Camera->SetupAttachment(SpringArm);
 
 	Movement = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("Movement"));
+
+	SpringArm->TargetArmLength = 120.0f;
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->bEnableCameraRotationLag = true;
+
+	Movement->MaxSpeed = 0.0f;
+
+	Tags.Add(TEXT("Player"));
+
+	static ConstructorHelpers::FClassFinder<AMyRocket> BP_Rocket(TEXT("/Script/Engine.Blueprint'/Game/Blueprints/CPP/BP_MyRocket.BP_MyRocket_C'"));
+	if (BP_Rocket.Succeeded())
+	{
+		RocketTemplate = BP_Rocket.Class;
+	}
+
 }
 
 // Called when the game starts or when spawned
 void AMyPawn::BeginPlay()
 {
 	Super::BeginPlay();
-
 }
 
 // Called every frame
@@ -71,6 +89,7 @@ void AMyPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	AddMovementInput(GetActorForwardVector());
 }
 
 // Called to bind functionality to input
@@ -78,4 +97,49 @@ void AMyPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	UEnhancedInputComponent* UIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+
+	if (UIC)
+	{
+		UIC->BindAction(IA_Fire.LoadSynchronous(), ETriggerEvent::Triggered);
+	}
+	else
+	{
+		PlayerInputComponent->BindAxis(TEXT("Pitch"), this, &AMyPawn::Pitch);
+		PlayerInputComponent->BindAxis(TEXT("Roll"), this, &AMyPawn::Roll);
+	}
+
+}
+
+void AMyPawn::Pitch(float Value)
+{
+	AddActorLocalRotation(FRotator(FMath::Clamp(Value, -1, 1) * 60.0f * UGameplayStatics::GetWorldDeltaSeconds(GetWorld()),
+		0,
+		0)
+	);
+}
+
+void AMyPawn::Roll(float Value)
+{
+	AddActorLocalRotation(FRotator(0,
+		0,
+		FMath::Clamp(Value, -1, 1) * 60.0f * UGameplayStatics::GetWorldDeltaSeconds(GetWorld()))
+	);
+}
+
+void AMyPawn::Fire()
+{
+	//UE_LOG(LogTemp, Warning, TEXT("발사"));
+	//문법적으로 CDO 가르키는 포인터
+	//의미적으론 그냥 클래스 이름(C++ 문법이 없음)
+	GetWorld()->SpawnActor<AActor>(RocketTemplate,
+		Arrow->K2_GetComponentToWorld());
+}
+
+void AMyPawn::Press_IA_Fire(const FInputActionValue& Value)
+{
+}
+
+void AMyPawn::Press_IA_PitchRoll(const FInputActionValue& Value)
+{
 }
